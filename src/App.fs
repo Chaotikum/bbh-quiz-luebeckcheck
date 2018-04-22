@@ -5,10 +5,12 @@ open Elmish
 open Elmish.React
 open Fable.PowerPack
 open Fable.Core.JsInterop
+open Fable.Import
 open Fable.Helpers.React.Props
 module R = Fable.Helpers.React
 
 importDefault "./styles.css" |> ignore
+
 
 type Answer = string
 
@@ -58,7 +60,7 @@ let questions =
             [ "Ein Kunde bei Holiday Check"; "Thomas Mann"; "Erika Mann"; "Die Bild" ] }
       { Text = "Wer behauptet Lübeck sei die Wohlfühlhauptstadt?"
         Answers =
-            [ "Lübeck Marketing"; "Heinrich Mann"; "Günter Grass"; "DNER, ein Youtuber aus Lübeck" ] } ]
+            [ "Lübeck Marketing"; "Heinrich Mann"; "Günter Grass"; "Thomas Mann" ] } ]
 
 type Page =
     | Welcome
@@ -91,9 +93,10 @@ let init () =
       Answered = [] }
     , Cmd.none
 
+
 let shuffleList list =
     let rand = Random ()
-    list |> List.sortWith (fun _ _ -> 1 - (rand.Next 2))
+    list |> List.sortWith (fun _ _ -> 1 - (rand.Next 3))
 
 let nextQuestion (answered : (Question * bool) list) =
     let rand = Random ()
@@ -220,8 +223,10 @@ let view model dispatch =
     | Quiz -> quizView model dispatch
     | Score -> scoreView model dispatch
 
-//Program.mkSimple init update view
+
 Program.mkProgram init update view
 |> Program.withReact "app"
 |> Program.withConsoleTrace
 |> Program.run
+
+Browser.document.body.addEventListener_touchmove (fun e -> e.preventDefault ())
