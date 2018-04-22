@@ -2,14 +2,17 @@ BBH Lübeck Check
 ================
 
 This is quiz, built with students of the
-[GGS St. Jürgen][http://www.ggs-stjuergen.de/home.html] school and the
-[Buddenbrookhaus][https://buddenbrookhaus.de] museum in Lübeck, Germany.
+[GGS St. Jürgen](http://www.ggs-stjuergen.de/home.html) school and the
+[Buddenbrookhaus](https://buddenbrookhaus.de) museum in Lübeck, Germany, for
+the exhibition ["Herzensheimat"](https://buddenbrookhaus.de/herzensheimat).
 
 Development
 -----------
 
-The project is basically a website built using F#, Fable, Elmish and React.
-Don't ask why, at least I didn't put Electron on that list as well.
+The project is basically a website built using [F#](http://fsharp.org),
+[Fable](http://fable.io), [Elmish](https://fable-elmish.github.io) and
+[React](https://reactjs.org). Don't ask why, at least I didn't put Electron on
+that list as well.
 
 ### Requirements
 
