@@ -7,7 +7,7 @@ console.log("Bundling for production...");
 module.exports = {
   entry: common.config.entry,
   output: {
-    filename: '[name].[hash].js',
+    filename: '[name].js',
     path: common.config.buildDir,
   },
   module: {

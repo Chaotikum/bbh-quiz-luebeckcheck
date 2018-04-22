@@ -1,19 +1,19 @@
-var fs = require("fs");
-var path = require("path");
-var fableUtils = require("fable-utils");
-var HtmlWebpackPlugin = require('html-webpack-plugin');
-var HtmlWebpackPolyfillIOPlugin = require('html-webpack-polyfill-io-plugin');
-// var DynamicCdnWebpackPlugin = require('dynamic-cdn-webpack-plugin');
+const fs = require("fs");
+const path = require("path");
+const fableUtils = require("fable-utils");
+const HtmlWebpackPlugin = require('html-webpack-plugin');
+const CleanWebpackPlugin = require('clean-webpack-plugin'); //installed via npm
+const ExtractTextPlugin = require("extract-text-webpack-plugin");
 
-var packageJson = JSON.parse(fs.readFileSync(resolve('../package.json')).toString());
-var errorMsg = "{0} missing in package.json";
+const packageJson = JSON.parse(fs.readFileSync(resolve('../package.json')).toString());
+const errorMsg = "{0} missing in package.json";
 
-var config = {
+const config = {
   entry: resolve(path.join("..", forceGet(packageJson, "fable.entry", errorMsg))),
   publicDir: resolve("../public"),
   buildDir: resolve("../build"),
   nodeModulesDir: resolve("../node_modules"),
-  indexHtmlTemplate: resolve("../src/index.html")
+  indexHtmlTemplate: resolve("../src/index.html"),
 }
 
 function resolve(filePath) {
@@ -57,7 +57,14 @@ function getModuleRules(isProduction) {
         loader: 'babel-loader',
         options: babelOptions
       },
-    }
+    },
+    {
+      test: /\.css$/,
+      use: ExtractTextPlugin.extract({
+        fallback: "style-loader",
+        use: "css-loader"
+      })
+    },
   ];
 }
 
@@ -66,10 +73,12 @@ function getPlugins(isProduction) {
     new HtmlWebpackPlugin({
       filename: path.join(config.buildDir, "index.html"),
       template: config.indexHtmlTemplate,
-      // minify: isProduction ? {} : false
+      hash: true,
     }),
-    new HtmlWebpackPolyfillIOPlugin({ features: "es6,fetch" }),
-    // new DynamicCdnWebpackPlugin({ verbose: true, only: config.cdnModules }),
+    new CleanWebpackPlugin(["build"], {
+        root: resolve(".."),
+    }),
+    new ExtractTextPlugin("styles.css"),
   ];
 }
 

@@ -1,19 +1,28 @@
 module Bbh.Quiz.LuebeckCheck
 
-open Fable.Core
 open Fable.Core.JsInterop
-open Fable.Import
+open Elmish
+open Elmish.React
+module R = Fable.Helpers.React
 
-let init() =
-    let canvas = Browser.document.getElementsByTagName_canvas().[0]
-    canvas.width <- 1000.
-    canvas.height <- 800.
-    let ctx = canvas.getContext_2d()
-    // The (!^) operator checks and casts a value to an Erased Union type
-    // See http://fable.io/docs/interacting.html#Erase-attribute
-    ctx.fillStyle <- !^"rgb(200,0,0)"
-    ctx.fillRect (10., 10., 55., 50.)
-    ctx.fillStyle <- !^"rgba(0, 0, 200, 0.5)"
-    ctx.fillRect (30., 30., 55., 50.)
+importDefault "./styles.css" |> ignore
 
-init()
+type Model = int
+
+type Msg =
+    | Foo
+
+let init () : Model =
+    0
+
+let update msg model =
+    match msg with
+    | _ -> model
+
+let view model _dispatch =
+    R.span [] [ string model |> R.str ]
+
+Program.mkSimple init update view
+|> Program.withReact "app"
+|> Program.withConsoleTrace
+|> Program.run
