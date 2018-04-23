@@ -96,10 +96,9 @@ let init () =
 
 let shuffleList list =
     let rand = Random ()
-    list |> List.sortWith (fun _ _ -> 1 - (rand.Next 3))
+    list |> List.sortWith (fun _ _ -> 1 - (rand.Next 4))
 
 let nextQuestion (answered : (Question * bool) list) =
-    let rand = Random ()
     questions
     |> List.filter (fun q ->
         answered
@@ -107,6 +106,7 @@ let nextQuestion (answered : (Question * bool) list) =
             a.Text = q.Text)
         |> not)
     |> (fun qs ->
+        let rand = Random ()
         let question = qs.[rand.Next qs.Length]
         { question with Answers = shuffleList question.Answers })
 
