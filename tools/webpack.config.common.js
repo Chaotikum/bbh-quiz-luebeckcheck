@@ -65,6 +65,12 @@ function getModuleRules(isProduction) {
         use: "css-loader"
       })
     },
+    {
+      test: /\.(svg|otf)$/,
+      use: {
+        loader: 'file-loader',
+      }
+    }
   ];
 }
 

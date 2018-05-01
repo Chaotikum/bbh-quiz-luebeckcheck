@@ -1,4 +1,8 @@
+# custom
 public/bundle.js*
+src/assets/*
+
+
 
 # Node
 node_modules/
