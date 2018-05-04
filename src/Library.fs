@@ -61,13 +61,13 @@ let private germanQuestions =
         Info = "Erbaut zwischen 1579 und 1745, dienten die 6 Gebäude der Lagerung von Salz." }
       { Text = "Welche Aussage über Lübeck stammt von Heinrich Mann?"
         Answers = [ "Es habe einen „Millionengestank“ an sich"; "Es sei ein „Weltwinkel“"; "Es sei eine „Handelszentrale“"; "Es sei „die Stadt mit den dümmsten Menschen“" ]
-        Info = "Heinrich Mann beschreibt den „Millionengestank“ in seinem Text Fantasieen über meine Vaterstadt L. Beide Brüder Mann äußerten sich wiederholt auch negativ über ihre Heimatstadt Lübeck." }
+        Info = "Heinrich Mann beschreibt den „Millionengestank“ in seinem Text „Fantasieen über meine Vaterstadt L“. Beide Brüder Mann äußerten sich wiederholt auch negativ über ihre Heimatstadt Lübeck." }
       { Text = "Thomas Mann sagt über Lübeck aus, es sei…"
         Answers = [ "„durchaus normal.“"; "„wenig abwechslungsreich.“"; "„ein prunkvoller Fleck.“"; "„einzigartig.“" ]
-        Info = "In seinem Essay Vom Beruf des deutschen Schriftstellers in unserer Zeit. Ansprache an den Bruder von 1931 wendet sich Thomas an seinen Bruder Heinrich und reflektiert ihre ,doppelte Herkunft'." }
+        Info = "In seinem Essay „Vom Beruf des deutschen Schriftstellers in unserer Zeit. Ansprache an den Bruder“ von 1931 wendet sich Thomas an seinen Bruder Heinrich und reflektiert ihre ,doppelte Herkunft'." }
       { Text = "„Das Meer ist keine Landschaft, es ist das Erlebnis der Ewigkeit.“ Von wem stammt dieses Zitat?"
         Answers = [ "Thomas Mann"; "Heinrich Mann"; "Golo Mann"; "Leonie Mann" ]
-        Info = "1926 hielt Thomas Mann anlässlich der 700-Jahrfeier der Reichsfreiheit Lübecks im Lübecker Stadttheater die Rede Lübeck als geistige Lebensform." }
+        Info = "1926 hielt Thomas Mann anlässlich der 700-Jahrfeier der Reichsfreiheit Lübecks im Lübecker Stadttheater die Rede „Lübeck als geistige Lebensform“." }
       { Text = "Wer sagte über Lübeck aus es sei „das Juwel vom Nordsee“?"
         Answers = [ "Ein Kunde bei Holiday Check"; "Thomas Mann"; "Erika Mann"; "Die Bild-Zeitung" ]
         Info = "Neben seiner wunderschönen Altstadt, seinem reichhaltigen Kulturangebot und seiner Nähe zur Ostsee (!) ist Lübeck vor allem für sein Marzipan weltbekannt." }
@@ -176,8 +176,9 @@ let getQuestions lang =
     | German -> germanQuestions
     | English -> englishQuestions
 
+let rand = Random ()
+
 let shuffleList list =
-    let rand = Random ()
     list |> List.sortBy (fun _ -> rand.Next())
 
 let getQuestion lang index =
@@ -196,7 +197,6 @@ let nextQuestion lang (answered : (int * bool) list) =
         |> List.exists (fun (a, _) -> a = i)
         |> not)
     |> (fun qs ->
-        let rand = Random ()
         qs.[rand.Next qs.Length])
 
 let getCorrectAnswer lang index =
