@@ -19,14 +19,15 @@ type Page =
     | Score
 
 type Highlight =
-    { Correct : Answer
+    { IsCorrect : bool
+      Correct : Answer
       Selected : Answer }
 
 type Msg =
     | Start
     | Answer of Answer
-    | HighlightAnswersDone
-    | NextQuestion
+    | NextQuestionClicked
+    //| SelectNextQuestion
     | Reset
     | SetLanguage of Language
 
@@ -35,7 +36,7 @@ type Model =
       Language : Language
       Current : Question
       IsHighlighting : bool
-      HighlightAnswers : Highlight option
+      Highlight : Highlight option
       Answered : (Question * bool) list }
 
 let init () =
@@ -43,7 +44,7 @@ let init () =
       Language = German
       Current = { Text = ""; Answers = []; Info = "" }
       IsHighlighting = false
-      HighlightAnswers = None
+      Highlight = None
       Answered = [] }
     , Cmd.none
 
@@ -75,16 +76,23 @@ let update msg model =
         { model with
             Answered = answered
             IsHighlighting = true
-            HighlightAnswers = Some { Correct = correctAnswer; Selected = answer } }
-        , cmdMsgAfter 600 HighlightAnswersDone
+            Highlight =
+                { IsCorrect = isCorrect
+                  Correct = correctAnswer
+                  Selected = answer } |> Some }
+        , Cmd.none
 
-    | HighlightAnswersDone ->
-        { model with HighlightAnswers = None }, cmdMsgAfter 200 NextQuestion
+    // | NextQuestionClicked ->
+    //     { model with IsHighlighting = false }, cmdMsgAfter 200 SelectNextQuestion
 
-    | NextQuestion ->
+    // | SelectNextQuestion ->
+    //     let m = { model with Highlight = None }
+    | NextQuestionClicked ->
+        let m = { model with Highlight = None; IsHighlighting = false }
+
         if isDone model.Answered
-        then { model with IsHighlighting = false; Page = Score }
-        else { model with IsHighlighting = false; Current = nextQuestion model.Language model.Answered }
+        then { m with Page = Score }
+        else { m with Current = nextQuestion model.Language model.Answered }
         , Cmd.none
 
     | Reset -> init ()
@@ -93,14 +101,54 @@ let h1 text = R.h1 [] [ R.str text ]
 
 let p text = R.p [] [ R.str text ]
 
-let button dispatch msg text =
-    R.button [ OnClick (fun _ -> dispatch msg) ] [ R.str text ]
+
+let page id elements = R.div [ sprintf "page-%s" id |> Id ] elements
+
+let logo = R.div [ Id "logo" ] []
+
+let languageButton dispatch lang =
+    [ English, "EN"
+      German,  "DE" ]
+    |> List.map (fun (l, name) ->
+        let isActive = l = lang
+        let classes =
+            "language"
+          + if isActive then " active" else ""
+        R.button
+            [ OnClick (fun _ -> dispatch (SetLanguage l))
+              Class classes ]
+            [ R.str name ] )
+    |> R.div [ Id "languages" ]
+
+let resetButton dispatch i18n =
+    R.button
+        [ Id "reset"
+          Class "black"
+          OnClick (fun _ -> dispatch Reset) ]
+        [ R.str i18n.ResetButton ]
+
+let bottomButton dispatch msg text =
+    R.button
+        [ OnClick (fun _ -> dispatch msg)
+          Class "bottom black"]
+        [ R.str text ]
+
+let welcomeView model dispatch i18n =
+    page "welcome"
+        [ logo
+          R.h1 [] [ R.str i18n.Title ]
+          languageButton dispatch model.Language
+          R.div
+            [ Id "actions" ]
+            [ bottomButton dispatch Start i18n.StartButton ] ]
 
 let answerButton dispatch answer highlights =
     let highlightClass =
         highlights
         |> Option.map (fun h ->
-            if h.Correct = answer then "correct"
+            if h.Correct = answer then
+                if h.IsCorrect then "" else "hint "
+              + "correct"
             elif h.Selected = answer then "wrong"
             else "")
         |> Option.defaultValue ""
@@ -111,81 +159,72 @@ let answerButton dispatch answer highlights =
           Class classes ]
         [ R.str answer ]
 
-let languageButton dispatch lang =
-    let (l, name) =
-        match lang with
-        | English -> German, "DE"
-        | German -> English, "EN"
-    R.button
-        [ OnClick (fun _ -> dispatch (SetLanguage l))
-          Class "language" ]
-        [ R.str name ]
+let contentPage id dispatch i18n lang elements =
+    page id
+        [ R.header []
+            [ R.div [ Id "banner" ]
+                [ logo; R.p [ Id "subtitle" ] [ R.str i18n.Subtitle ] ]
+              R.div [ Id "buttons" ]
+                [ languageButton dispatch lang
+                  resetButton dispatch i18n ] ]
+          R.main [] elements ]
 
+let quizView model dispatch i18n =
+    let progress =
+        let offset = if model.IsHighlighting then 0 else 1
+        i18n.ProgressFormat (model.Answered.Length + offset)
+    let question = model.Current
+    let answers =
+        question.Answers
+        |> List.map (fun a -> answerButton dispatch a model.Highlight)
+        |> R.div [ Class "answers" ]
 
-let page id elements = R.div [ sprintf "page-%s" id |> Id ] elements
+    let info, next =
+        match model.Highlight with
+        | None -> R.str "", R.str ""
+        | Some highlight ->
+            let cl, title =
+                if highlight.IsCorrect
+                then "correct", i18n.InfoTitleCorrect
+                else "wrong", i18n.InfoTitleWrong
+            let info =
+                 R.div [ Id "info"; Class cl ]
+                    [ R.h3 [] [ R.str title ]
+                      R.p [] [ R.str question.Info] ]
+            let next = bottomButton dispatch NextQuestionClicked i18n.NextButton
+            info, next
 
-let logo = R.div [ Id "logo" ] []
+    contentPage "quiz" dispatch i18n model.Language
+        [ R.div [ Id "progress" ] [ R.str progress ]
+          R.h2 [] [ R.str question.Text ]
+          answers
+          info
+          next ]
 
-let welcomeView model dispatch i18n =
-    page "welcome"
-        [ logo
-          R.h1 [ Id "title" ] [ R.str i18n.Title ]
-          R.div
-            [ Id "actions" ]
-            [ languageButton dispatch model.Language
-              button dispatch Start i18n.StartButton ] ]
-
-// let quizView lang model dispatch =
-
-//     let countStr =
-//         let offset = if model.IsHighlighting then 0 else 1
-//         lang.ProgressFormat (model.Answered.Length + offset)
-//     let question = model.Current
-//     let answers =
-//         question.Answers
-//         |> List.map (fun a -> answerButton dispatch a model.HighlightAnswers)
-
-//     // let backArrow =
-//     //     if model.Answered.IsEmpty
-//     //     then R.div [ Id "back-arrow"; Class "disabled" ] []
-//     //     else R.div [ Id "back-arrow"; OnClick (fun _ -> dispatch Back ) ] []
-
-//     page "quiz" dispatch
-//         [ logo
-//           R.p [] [ R.str lang.Subtitle ]
-//          (* backArrow *) ]
-//         [ ]
-
-//     List.append
-//         [ R.div [ Id "header" ]
-//             [ R.span [] [ R.str countStr ]
-//               button dispatch Reset lang.ResetButton ]
-//           R.h1 [ Id "question" ] [ R.str question.Text ] ]
-//         answers
-//     |> page "quiz" dispatch
-
-// let scoreView lang model dispatch =
-//     let correctCount =
-//         model.Answered
-//         |> List.filter (fun (_, isCorrect) -> isCorrect)
-//         |> List.length
-//     let result =
-//         sprintf "Du hast %d/%d Fragen richtig beantwortet!"
-//             correctCount questionCount
-
-//     page "score" dispatch
-//         [ h1 "Auswertung"
-//           p result
-//           button dispatch Reset "Zurück zum Start" ]
+let scoreView model dispatch i18n =
+    let correctAnswerCount =
+        model.Answered
+        |> List.filter (fun (_, correct) -> correct)
+        |> List.length
+    contentPage "score" dispatch i18n model.Language
+        [ R.div [ Id "progress" ]
+            [ correctAnswerCount
+              |> i18n.ScoreProgressFormat
+              |> R.str ]
+          R.h2 [] [ R.str i18n.ScoreTitle ]
+          R.div [ Id "score-hero" ]
+            [ R.h3 []
+                [ R.em [] [ string correctAnswerCount |> R.str ]
+                  R.str i18n.Points ]
+              R.p [] [ i18n.AverageFormat 8.7 |> R.str] ]
+          bottomButton dispatch Reset i18n.BackToStartButton ]
 
 let view model dispatch =
     let i18n = getTranslation model.Language
-    welcomeView model dispatch i18n
-
-    // match model.Page with
-    // | Welcome -> welcomeView lang dispatch
-    // | Quiz -> quizView lang model dispatch
-    // | Score -> scoreView lang model dispatch
+    match model.Page with
+    | Welcome -> welcomeView model dispatch i18n
+    | Quiz -> quizView model dispatch i18n
+    | Score -> scoreView model dispatch i18n
 
 Program.mkProgram init update view
 |> Program.withReact "app"

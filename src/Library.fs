@@ -14,9 +14,13 @@ type LanguageData =
       Subtitle : string
       StartButton : string
       ResetButton : string
+      InfoTitleCorrect : string
+      InfoTitleWrong : string
       NextButton : string
       ScoreButton : string
+      BackToStartButton : string
       ProgressFormat : int -> string
+      ScoreProgressFormat : int -> string
       ScoreTitle : string
       Points : string
       AverageFormat : float -> string
@@ -83,7 +87,8 @@ let private englishQuestions =
       { Text = "Which animal can be found in the Marienkirche?"
         Answers = [ "Mouse"; "Ladybug"; "Unicorn"; "Alpaca" ]
         Info = "According to popular belief, a person who touches the mouse will return to Lübeck one day." }
-      { Text = "Have you been paying attention? Which of the following is written above the entrance of the Buddenbrookhaus: "
+      //{ Text = "Have you been paying attention? Which of the following is written above the entrance of the Buddenbrookhaus: "
+      { Text = "Which of the following is written above the entrance of the Buddenbrookhaus: "
         Answers = [ "Anno: Dominus providebit: 1758"; "Anno: Domini providebant: 1679"; "Anna: Domina providebit: 1850"; "Annus: Dominus providebimus: 2000" ]
         Info = "The inscription reads \"In the year of: the Lord will provide: 1758\" " }
       { Text = "How much time do visitors spend on average at the Buddenbrookhaus?"
@@ -93,7 +98,7 @@ let private englishQuestions =
         Answers = [ "215 square kilometers"; "105 square kilometers"; "875 square kilometers"; "48 square kilometers" ]
         Info = "The city consists of ten districts; one of them is Travemünde, immortalized in Thomas Mann's \"Buddenbrooks\"." }
       { Text = "Who coined the phrase \"Home of the Heart\"?"
-        Answers = [ "Thomas Mann"; "Marten Krienke, from the project 'Literature as an Event'"; "Günter Grass"; "Bernd Saxe, Ex-mayor of Lübeck" ]
+        Answers = [ "Thomas Mann"; "Marten Krienke, from 'Literature as an Event'"; "Günter Grass"; "Bernd Saxe, Ex-mayor of Lübeck" ]
         Info = "Thomas Mann used that phrase in his speech at the Nobel Prize Award ceremony of 1929." }
       { Text = "How old is the townhall of Lübeck?"
         Answers = [ "710 years"; "908 years"; "62 years"; "1015 years" ]
@@ -131,10 +136,14 @@ let getTranslation lang =
         { Title = sprintf "%d questions about the exhibition" questionCount
           Subtitle = "The quiz"
           StartButton = "Start quiz"
-          ResetButton = "Back to start"
+          ResetButton = "Reset"
+          InfoTitleCorrect = "Correct!"
+          InfoTitleWrong = "Wrong!"
           NextButton = "Next question"
           ScoreButton = "See score"
+          BackToStartButton = "Back to start"
           ProgressFormat = fun n -> sprintf "%02d of %02d" n questionCount
+          ScoreProgressFormat = fun n -> sprintf "%02d of %02d correct" n questionCount
           ScoreTitle = "You made it!"
           Points = "points"
           AverageFormat = sprintf "The average score of previous players is %.1f points."
@@ -143,13 +152,22 @@ let getTranslation lang =
         { Title = sprintf "%d Fragen zur Ausstellung" questionCount
           Subtitle = "Das Quiz"
           StartButton = "Quiz starten"
-          ResetButton = "Zurück zum Start"
+          ResetButton = "Reset"
+          InfoTitleCorrect = "Richtig!"
+          //InfoTitleWrong = "Falsch!"
+          InfoTitleWrong = "Leider falsch."
           NextButton = "Nächste Frage"
           ScoreButton = "Zur Auswertung"
+          BackToStartButton = "Zurück zum Start"
           ProgressFormat = fun n -> sprintf "%02d von %02d" n questionCount
+          ScoreProgressFormat = fun n -> sprintf "%02d von %02d richtige" n questionCount
           ScoreTitle = "Geschafft!"
           Points = "Punkte"
-          AverageFormat = sprintf "Der Durchschnitt der anderen Spieler liegt bei %.1f Punkten."
+          AverageFormat =
+            fun n ->
+                "Der Durchschnitt der anderen Spieler liegt bei "
+              + (sprintf "%.1f" n).Replace ('.', ',')
+              + " Punkten."
           Questions = germanQuestions }
 
 let getQuestions lang =
@@ -157,8 +175,8 @@ let getQuestions lang =
     | German -> germanQuestions
     | English -> englishQuestions
 
+let rand = Random ()
 let shuffleList list =
-    let rand = Random ()
     list |> List.sortWith (fun _ _ -> 1 - (rand.Next 4))
 
 let nextQuestion lang (answered : (Question * bool) list) =
