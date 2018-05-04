@@ -20,33 +20,36 @@ type Page =
 
 type Highlight =
     { IsCorrect : bool
-      Correct : Answer
-      Selected : Answer }
+      Correct : int
+      Selected : int }
 
 type Msg =
     | Start
-    | Answer of Answer
+    | Answer of int
     | NextQuestionClicked
-    //| SelectNextQuestion
     | Reset
     | SetLanguage of Language
 
 type Model =
     { Page : Page
       Language : Language
-      Current : Question
+      CurrentIndex : int
+      AnswerOrder : int list
       IsHighlighting : bool
       Highlight : Highlight option
-      Answered : (Question * bool) list }
+      Answered : (int * bool) list }
 
-let init () =
+let initialModel =
     { Page = Welcome
       Language = German
-      Current = { Text = ""; Answers = []; Info = "" }
+      CurrentIndex = -1
+      AnswerOrder = []
       IsHighlighting = false
       Highlight = None
       Answered = [] }
-    , Cmd.none
+
+let init () =
+    initialModel, Cmd.none
 
 let cmdMsgAfter ms msg =
     Cmd.ofPromise
@@ -55,47 +58,46 @@ let cmdMsgAfter ms msg =
         (fun _ -> msg)
         (fun _ -> msg)
 
+let nextQuestion model =
+    let nextIndex = nextQuestion model.Language model.Answered
+    { model with
+        CurrentIndex = nextIndex
+        AnswerOrder = shuffleList [0..3] }
+
 let update msg model =
     match msg with
     | SetLanguage lang ->
-        { model with Language = lang }, Cmd.none
+        { model with Language = lang }
+        , Cmd.none
 
     | Start ->
-        { model with
-            Page = Quiz
-            Current = nextQuestion model.Language model.Answered }
+        { nextQuestion model with Page = Quiz }
         , Cmd.none
 
     | Answer _ when model.IsHighlighting ->
         model, Cmd.none
 
-    | Answer answer ->
-        let correctAnswer = getCorrectAnswer model.Language model.Current
-        let isCorrect = correctAnswer = answer
-        let answered = ( model.Current, isCorrect ) :: model.Answered
+    | Answer answerIndex ->
+        let isCorrect = answerIndex = 0
         { model with
-            Answered = answered
+            Answered = ( model.CurrentIndex, isCorrect ) :: model.Answered
             IsHighlighting = true
             Highlight =
                 { IsCorrect = isCorrect
-                  Correct = correctAnswer
-                  Selected = answer } |> Some }
+                  Correct = 0
+                  Selected = answerIndex } |> Some }
         , Cmd.none
 
-    // | NextQuestionClicked ->
-    //     { model with IsHighlighting = false }, cmdMsgAfter 200 SelectNextQuestion
-
-    // | SelectNextQuestion ->
-    //     let m = { model with Highlight = None }
     | NextQuestionClicked ->
-        let m = { model with Highlight = None; IsHighlighting = false }
+        let model = { model with Highlight = None; IsHighlighting = false }
 
         if isDone model.Answered
-        then { m with Page = Score }
-        else { m with Current = nextQuestion model.Language model.Answered }
+        then { model with Page = Score }
+        else nextQuestion model
         , Cmd.none
 
-    | Reset -> init ()
+    | Reset ->
+        { initialModel with Language = model.Language }, Cmd.none
 
 let h1 text = R.h1 [] [ R.str text ]
 
@@ -142,22 +144,22 @@ let welcomeView model dispatch i18n =
             [ Id "actions" ]
             [ bottomButton dispatch Start i18n.StartButton ] ]
 
-let answerButton dispatch answer highlights =
+let answerButton dispatch index text highlights =
     let highlightClass =
         highlights
         |> Option.map (fun h ->
-            if h.Correct = answer then
+            if h.Correct = index then
                 if h.IsCorrect then "" else "hint "
               + "correct"
-            elif h.Selected = answer then "wrong"
+            elif h.Selected = index then "wrong"
             else "")
         |> Option.defaultValue ""
     let classes = "answer " + highlightClass
 
     R.button
-        [ OnClick (fun _ -> dispatch (Answer answer))
+        [ OnClick (fun _ -> dispatch (Answer index))
           Class classes ]
-        [ R.str answer ]
+        [ R.str text ]
 
 let contentPage id dispatch i18n lang elements =
     page id
@@ -173,10 +175,13 @@ let quizView model dispatch i18n =
     let progress =
         let offset = if model.IsHighlighting then 0 else 1
         i18n.ProgressFormat (model.Answered.Length + offset)
-    let question = model.Current
+    let question = getQuestion model.Language model.CurrentIndex
     let answers =
         question.Answers
-        |> List.map (fun a -> answerButton dispatch a model.Highlight)
+        |> List.mapi (fun i a ->
+            i, answerButton dispatch i a model.Highlight)
+        |> List.sortBy (fun (i, _) -> model.AnswerOrder.[i])
+        |> List.map (fun (_, a) -> a)
         |> R.div [ Class "answers" ]
 
     let info, next =

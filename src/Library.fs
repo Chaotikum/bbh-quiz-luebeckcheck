@@ -175,27 +175,32 @@ let getQuestions lang =
     | German -> germanQuestions
     | English -> englishQuestions
 
-let rand = Random ()
 let shuffleList list =
-    list |> List.sortWith (fun _ _ -> 1 - (rand.Next 4))
+    let rand = Random ()
+    list |> List.sortBy (fun _ -> rand.Next())
 
-let nextQuestion lang (answered : (Question * bool) list) =
+let getQuestion lang index =
     getQuestions lang
-    |> List.filter (fun q ->
+    |> List.item index
+
+let getShuffledQuestion lang index =
+    getQuestion lang index
+    |> (fun q -> { q with Answers = shuffleList q.Answers })
+
+let nextQuestion lang (answered : (int * bool) list) =
+    getQuestions lang
+    |> List.mapi (fun i _ -> i)
+    |> List.filter (fun i ->
         answered
-        |> List.exists (fun (a, _) ->
-            a.Text = q.Text)
+        |> List.exists (fun (a, _) -> a = i)
         |> not)
     |> (fun qs ->
         let rand = Random ()
-        let question = qs.[rand.Next qs.Length]
-        { question with Answers = shuffleList question.Answers })
+        qs.[rand.Next qs.Length])
 
-let getCorrectAnswer lang curr =
-    getQuestions lang
-    |> List.find (fun q -> q.Text = curr.Text)
+let getCorrectAnswer lang index =
+    getQuestion lang index
     |> (fun q -> q.Answers |> List.head)
 
-
-let isDone (answered : (Question * bool) list) =
+let isDone (answered : (int * bool) list) =
     questionCount = answered.Length
