@@ -26,7 +26,8 @@ type Highlight =
 type Msg =
     | Start
     | Answer of int
-    | NextQuestionClicked
+    | NextQuestion
+    | ShowScore
     | Reset
     | SetLanguage of Language
 
@@ -37,7 +38,8 @@ type Model =
       AnswerOrder : int list
       IsHighlighting : bool
       Highlight : Highlight option
-      Answered : (int * bool) list }
+      Answered : (int * bool) list
+      AverageScore : float }
 
 let initialModel =
     { Page = Welcome
@@ -46,7 +48,8 @@ let initialModel =
       AnswerOrder = []
       IsHighlighting = false
       Highlight = None
-      Answered = [] }
+      Answered = []
+      AverageScore = 8.7 }
 
 let init () =
     initialModel, Cmd.none
@@ -58,10 +61,9 @@ let cmdMsgAfter ms msg =
         (fun _ -> msg)
         (fun _ -> msg)
 
-let nextQuestion model =
-    let nextIndex = nextQuestion model.Language model.Answered
+let nextQuestionModel model =
     { model with
-        CurrentIndex = nextIndex
+        CurrentIndex = nextQuestion model.Language model.Answered
         AnswerOrder = shuffleList [0..3] }
 
 let update msg model =
@@ -71,7 +73,7 @@ let update msg model =
         , Cmd.none
 
     | Start ->
-        { nextQuestion model with Page = Quiz }
+        { nextQuestionModel model with Page = Quiz }
         , Cmd.none
 
     | Answer _ when model.IsHighlighting ->
@@ -88,12 +90,23 @@ let update msg model =
                   Selected = answerIndex } |> Some }
         , Cmd.none
 
-    | NextQuestionClicked ->
+    | NextQuestion ->
         let model = { model with Highlight = None; IsHighlighting = false }
-
         if isDone model.Answered
-        then { model with Page = Score }
-        else nextQuestion model
+        then model, Cmd.ofMsg ShowScore
+        else nextQuestionModel model, Cmd.none
+
+    | ShowScore ->
+
+        let scores = loadScores ()
+        let averageScore =
+            if List.isEmpty scores then 8.7
+            else List.averageBy float scores
+        getScore model.Answered :: scores |> saveScores
+
+        { model with
+            Page = Score
+            AverageScore = averageScore }
         , Cmd.none
 
     | Reset ->
@@ -196,7 +209,12 @@ let quizView model dispatch i18n =
                  R.div [ Id "info"; Class cl ]
                     [ R.h3 [] [ R.str title ]
                       R.p [] [ R.str question.Info] ]
-            let next = bottomButton dispatch NextQuestionClicked i18n.NextButton
+            let next =
+                let msg, text =
+                    if isDone model.Answered
+                    then ShowScore, i18n.ScoreButton
+                    else NextQuestion, i18n.NextButton
+                bottomButton dispatch msg text
             info, next
 
     contentPage "quiz" dispatch i18n model.Language
@@ -207,21 +225,18 @@ let quizView model dispatch i18n =
           next ]
 
 let scoreView model dispatch i18n =
-    let correctAnswerCount =
-        model.Answered
-        |> List.filter (fun (_, correct) -> correct)
-        |> List.length
+    let score = getScore model.Answered
     contentPage "score" dispatch i18n model.Language
         [ R.div [ Id "progress" ]
-            [ correctAnswerCount
+            [ score
               |> i18n.ScoreProgressFormat
               |> R.str ]
           R.h2 [] [ R.str i18n.ScoreTitle ]
           R.div [ Id "score-hero" ]
             [ R.h3 []
-                [ R.em [] [ string correctAnswerCount |> R.str ]
+                [ R.em [] [ string score |> R.str ]
                   R.str i18n.Points ]
-              R.p [] [ i18n.AverageFormat 8.7 |> R.str] ]
+              R.p [] [ i18n.AverageFormat model.AverageScore |> R.str] ]
           bottomButton dispatch Reset i18n.BackToStartButton ]
 
 let view model dispatch =

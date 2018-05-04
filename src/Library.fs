@@ -2,6 +2,7 @@ module Bbh.Quiz.LuebeckCheck.Library
 
 open System
 
+
 type Answer = string
 
 type Question =
@@ -204,3 +205,22 @@ let getCorrectAnswer lang index =
 
 let isDone (answered : (int * bool) list) =
     questionCount = answered.Length
+
+let getScore (answered : (int * bool) list) =
+    answered |> List.filter (fun (_, c) -> c) |> List.length
+
+
+// Json + localstorage
+
+open Fable.Import
+open Fable.Core.JsInterop
+
+let private scoresKey = "scores"
+
+let loadScores () =
+    let saved = Browser.localStorage.getItem scoresKey
+    if isNull saved then []
+    else ofJson<int list> (saved :?> string)
+
+let saveScores scores =
+    Browser.localStorage.setItem (scoresKey, toJson scores)
