@@ -9,6 +9,7 @@ open Fable.Helpers.React.Props
 module R = Fable.Helpers.React
 
 open Bbh.Quiz.LuebeckCheck.Library
+open System
 
 importDefault "./styles.css" |> ignore
 
@@ -24,15 +25,17 @@ type Highlight =
       Selected : int }
 
 type Msg =
+    | Tick of DateTimeOffset
+    | SetLanguage of Language
     | Start
     | Answer of int
     | NextQuestion
     | ShowScore
     | Reset
-    | SetLanguage of Language
 
 type Model =
-    { Page : Page
+    { LastAction : DateTimeOffset
+      Page : Page
       Language : Language
       CurrentIndex : int
       AnswerOrder : int list
@@ -42,7 +45,8 @@ type Model =
       AverageScore : float }
 
 let initialModel =
-    { Page = Welcome
+    { LastAction = DateTimeOffset.MinValue
+      Page = Welcome
       Language = German
       CurrentIndex = -1
       AnswerOrder = []
@@ -53,6 +57,13 @@ let initialModel =
 
 let init () =
     initialModel, Cmd.none
+
+let subscription _model =
+    let sub dispatch =
+        Browser.window.setInterval
+            (fun _ -> Tick DateTimeOffset.Now |> dispatch
+            , 10000) |> ignore
+    Cmd.ofSub sub
 
 let cmdMsgAfter ms msg =
     Cmd.ofPromise
@@ -67,7 +78,18 @@ let nextQuestionModel model =
         AnswerOrder = shuffleList [0..3] }
 
 let update msg model =
+    let lastAction = model.LastAction
+    let origModel = model
+    let model = { model with LastAction = DateTimeOffset.Now }
+
     match msg with
+    | Tick time ->
+        origModel,
+            if model.Page <> Welcome &&
+                time.Subtract lastAction > TimeSpan.FromMinutes 1.5
+            then Cmd.ofMsg Reset
+            else Cmd.none
+
     | SetLanguage lang ->
         { model with Language = lang }
         , Cmd.none
@@ -97,7 +119,6 @@ let update msg model =
         else nextQuestionModel model, Cmd.none
 
     | ShowScore ->
-
         let scores = loadScores ()
         let averageScore =
             if List.isEmpty scores then 8.7
@@ -247,6 +268,7 @@ let view model dispatch =
     | Score -> scoreView model dispatch i18n
 
 Program.mkProgram init update view
+|> Program.withSubscription subscription
 |> Program.withReact "app"
 |> Program.withConsoleTrace
 |> Program.run
